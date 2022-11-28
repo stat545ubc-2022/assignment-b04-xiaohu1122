@@ -1,0 +1,155 @@
+---
+title: "Assignment b04"
+author: "Xiao Hu"
+date: "`r Sys.Date()`"
+output: html_document
+---
+```{r}
+library(tidyverse)
+library(tidytext)
+library(janeaustenr)
+library(palmerpenguins)
+library(purrr)
+#install.packages("tidytext")
+```
+
+
+# Exercise 1 (37.5 points)
+Take a Jane Austen book contained in the `janeaustenr` package, or another book from some other source, such as one of the many freely available books from Project Gutenberg (be sure to indicate where you got the book from). Make a plot of the most common words in the book, removing “stop words” of your choosing (words like “the”, “a”, etc.) or stopwords from a pre-defined source, like the stopwords package or `tidytext::stop_words`.
+
+```{r}
+# tibble aka neater data frame
+emma_df <- data_frame(Text = emma) 
+# picks out the individual words and places them as rows
+emma_words <- emma_df %>% 
+                  unnest_tokens(output = word, input = Text) 
+# remove stopwords
+emma_words <- emma_words %>%
+                   anti_join(stop_words, by = "word") 
+# counts of the words
+emma_wordcounts <- emma_words %>% count(word, sort = TRUE)
+
+# top 10 words with highest frequency
+top_10 <- emma_wordcounts %>% 
+  arrange(desc(n)) %>% 
+  head(10) 
+
+# plot
+top_10 %>% 
+    ggplot(aes(reorder(word,n), n)) + 
+    geom_col() +
+    coord_flip() +
+    labs(x = "Word \n", y = "\n Count ", title = "Frequent Words In Emma \n") +
+    geom_text(aes(label = n), hjust = 1.2, colour = "white", fontface = "bold") +
+    theme(plot.title = element_text(hjust = 0.5), 
+        axis.title.x = element_text(face="bold", size = 10),
+        axis.title.y = element_text(face="bold", size = 10))
+```
+
+
+# Exercise 2 (37.5 points)
+Make a function that converts words to your own version of Pig Latin.
+Your Pig Latin should incorporate two components:
+
+Rearrangement component
+
+The default Pig Latin rearrangement rule, as per Wikipedia, moves beginning letters to the end:
+
+For words that begin with consonant sounds, all letters before the initial vowel are placed at the end of the word sequence.
+When words begin with consonant clusters (multiple consonants that form one sound), the whole sound is added to the end
+For words beginning with vowel sounds, one removes the initial vowel(s) along with the first consonant or consonant cluster.
+Modify this somehow. Maybe you move letters from the end to the beginning, or you change the rules altogether, keeping a similar level of complexity.
+
+Addition component
+
+The default Pig Latin addition rule is to add “ay” to the end of the word, after rearranging the letters of the word. You should choose some other addition rule.
+```{r}
+
+pig_latin <- function(word){
+  #For words that begin with consonant sounds, all letters before the initial vowel are reversed
+  list = c("a","e","i","o","u")
+  i = 1
+  while (i <= nchar(word) & (substr(word,i,i) %in% list) ){
+    i = i+1
+    
+  }
+  if (i > 1){
+    cons = substr(word,1,i-1)
+    splits <- strsplit(cons, "")[[1]]
+    reversed <- rev(splits)
+    reversed_cons <- paste(reversed, collapse = "")
+    pig_latin <- str_c(reversed_cons, str_sub(word,i))
+  }else{
+    pig_latin <- word
+  }
+  
+  #If the last letter is consonant sounds, then add "y" to the end of the word, 
+  #otherwise, add "e" to the end of the word.
+  if (str_sub(pig_latin,-1) %in% list){
+    pig_latin <- str_c(pig_latin,"y")
+  }else{
+    pig_latin <- str_c(pig_latin,"e")
+  }
+  
+  return(pig_latin)  
+}
+```
+
+```{r}
+word <- "ieuoaords"
+pig_latin(word)
+word <- "posdhla"
+pig_latin(word)
+```
+
+# Exercise 3 (37.5 points)
+For this exercise, you’ll be evaluating a model that’s fit separately for each group in some dataset. You should fit these models with some question in mind.
+
+```{r}
+penguins <- na.omit(penguins)
+head(penguins)
+```
+
+1. Make a column of model objects. Do this using the appropriate mapping function from the purrr package. Note: it’s possible you’ll have to make use of nesting, here.
+```{r}
+models <- penguins %>% 
+            nest(data = -species) %>% 
+            mutate(
+              model = map(data, 
+                          function(df) lm(body_mass_g ~ bill_depth_mm,
+                                data = df)
+                          )
+            )
+models
+```
+
+2. Evaluate the model in a way that interests you. But, you should evaluate something other than a single number for each group. Hint: you’ll need to use another purrr mapping function again.
+```{r}
+models <- models %>% 
+            mutate(
+                pred = map(.x = model, ~predict(.x)),
+                beta_bill_depth = map_dbl(.x = model, ~coef(.x)['bill_depth_mm']),
+                significance = map_dbl(.x = model, ~glance(.x) %>% pull(p.value))
+                )
+```
+
+3. Print out this intermediate tibble for inspection (perhaps others as well, if it makes sense to do so).
+```{r}
+models
+```
+
+4. Unnest the resulting calculations, and print your final tibble to screen. Make sure your tibble makes sense: column names are appropriate, and you’ve gotten rid of columns that no longer make sense.
+```{r}
+unnest_t <- models %>% select(-model) %>% unnest(cols = c(data,pred)) %>% select(species,bill_depth_mm,body_mass_g,pred,beta_bill_depth,significance)
+unnest_t
+```
+
+5. Produce a plot communicating something about the result.
+```{r}
+unnest_t %>% ggplot(aes(y = body_mass_g,x = bill_depth_mm)) + 
+  geom_point() + 
+  geom_line(aes(y = pred), color = "red") +
+  facet_wrap(~species)
+```
+
+
