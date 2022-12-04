@@ -3,10 +3,10 @@
 
 This is a repository for STAT545B Assignment b04.
 
-It contains 3 exercise:
+It contains 3 exercises:
 
-* Make a plot of the most common words in the book, removing “stop words”
+* Make a plot of the most common words in a book, removing “stop words”
 
-* Make a function that converts words to my own version of Pig Latin.
+* Make a function that converts words to some version of Pig Latin.
 
-* Evaluate a model that’s fit separately for each group in dataset
+* Evaluate a model that is fit separately for each group in dataset
