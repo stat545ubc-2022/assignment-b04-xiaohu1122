@@ -2,7 +2,7 @@
 title: "Assignment b04"
 author: "Xiao Hu"
 date: "`r Sys.Date()`"
-output: html_document
+output: github_document
 ---
 ```{r}
 library(tidyverse)
@@ -10,7 +10,7 @@ library(tidytext)
 library(janeaustenr)
 library(palmerpenguins)
 library(purrr)
-#install.packages("tidytext")
+library(testthat)
 ```
 
 
@@ -49,23 +49,26 @@ top_10 %>%
 
 # Exercise 2 (37.5 points)
 Make a function that converts words to your own version of Pig Latin.
-Your Pig Latin should incorporate two components:
 
-Rearrangement component
-
-The default Pig Latin rearrangement rule, as per Wikipedia, moves beginning letters to the end:
-
-For words that begin with consonant sounds, all letters before the initial vowel are placed at the end of the word sequence.
-When words begin with consonant clusters (multiple consonants that form one sound), the whole sound is added to the end
-For words beginning with vowel sounds, one removes the initial vowel(s) along with the first consonant or consonant cluster.
-Modify this somehow. Maybe you move letters from the end to the beginning, or you change the rules altogether, keeping a similar level of complexity.
-
-Addition component
-
-The default Pig Latin addition rule is to add “ay” to the end of the word, after rearranging the letters of the word. You should choose some other addition rule.
 ```{r}
+#' Converts one word to the version of Pig Latin
+#'
+#' For words that begin with consonant sounds, all letters before the initial vowel are reversed.
+#' If the last letter is a consonant sound, then add "y" to the end of the word, 
+#' otherwise, add "e" to the end of the word.
+#'
+#' @param word a string
+#' @return A string
+#' @examples
+#' pig_latin("ieuoaords")
+#' pig_latin("posdhla")
+#' 
+#' @export
+
 
 pig_latin <- function(word){
+  
+  stopifnot(is.character(word))
   #For words that begin with consonant sounds, all letters before the initial vowel are reversed
   list = c("a","e","i","o","u")
   i = 1
@@ -96,14 +99,18 @@ pig_latin <- function(word){
 ```
 
 ```{r}
-word <- "ieuoaords"
-pig_latin(word)
-word <- "posdhla"
-pig_latin(word)
+test_that("Testing pig_latin function", {
+  expect_equal(pig_latin("lihjgka"),"lihjgkay")
+  expect_equal(pig_latin("aeojgka"),"oeajgkay")
+  expect_match(pig_latin("ljgk"), 'ljgke')
+  expect_error(pig_latin(1), "is.character")
+})
 ```
 
 # Exercise 3 (37.5 points)
 For this exercise, you’ll be evaluating a model that’s fit separately for each group in some dataset. You should fit these models with some question in mind.
+
+In this exercise, I will use `penguins` as my dataset to investigate the relationship between bill depth and body mass across different species.
 
 ```{r}
 penguins <- na.omit(penguins)
@@ -122,6 +129,7 @@ models <- penguins %>%
             )
 models
 ```
+I fitted a linear regression with body mass as response variable and bill depth as explanatory variable for each species.
 
 2. Evaluate the model in a way that interests you. But, you should evaluate something other than a single number for each group. Hint: you’ll need to use another purrr mapping function again.
 ```{r}
@@ -133,10 +141,14 @@ models <- models %>%
                 )
 ```
 
+I extracted coefficient of bill_depth and its p-value in each model to check whether there are any differences between coefficients among different species and whether all the coefficients are significant. Moreover, I also predicted body mass using the fitted linear regression model, and the values are stored in a tibble for each species.
+
 3. Print out this intermediate tibble for inspection (perhaps others as well, if it makes sense to do so).
 ```{r}
 models
 ```
+
+All coefficients are positive and significant. Gentoo has the largest coefficient, which indicates that one unit change in bill depth is associated with the most changes in body mass (369.44g).
 
 4. Unnest the resulting calculations, and print your final tibble to screen. Make sure your tibble makes sense: column names are appropriate, and you’ve gotten rid of columns that no longer make sense.
 ```{r}
@@ -152,4 +164,5 @@ unnest_t %>% ggplot(aes(y = body_mass_g,x = bill_depth_mm)) +
   facet_wrap(~species)
 ```
 
+The red lines represent predicted value by linear regression models. It is clear that the linear model fits data well for all species, and there are differences in association between bill depth and body mass across different species. Gentoo has the steepest slope, while slope in Adelie and Chinstrap are similar.
 
