@@ -1,7 +1,7 @@
 
 # Assignment b04
 
-This is a repository of STAT545B Assignment b04.
+This is a repository for STAT545B Assignment b04.
 
 It contains 3 exercise:
 
